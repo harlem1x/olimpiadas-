@@ -1,0 +1,136 @@
+<!doctype html>
+<html lang="pt-br">
+<head>
+<meta charset="utf-8">
+<title>Olimpíada Ala Piçarreira - Inscrições</title>
+<style>
+  body{font-family:Arial, sans-serif;margin:0;padding:20px;background:#f4f6f8;color:#222}
+  .wrap{max-width:700px;margin:0 auto}
+  h1{font-size:22px;margin:0 0 4px}
+  .sub{font-size:13px;color:#666;margin-bottom:16px}
+  .card{background:#fff;border-radius:10px;padding:18px;margin-bottom:18px;box-shadow:0 1px 3px rgba(0,0,0,.1)}
+  label{display:block;font-size:13px;font-weight:bold;margin:10px 0 4px}
+  select, input[type=text]{width:100%;padding:8px;font-size:14px;border:1px solid #ccc;border-radius:6px;box-sizing:border-box}
+  .games{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:6px;margin-top:6px}
+  .game-item{display:flex;align-items:center;gap:6px;font-size:13px;background:#f0f2f5;padding:6px 8px;border-radius:6px}
+  button{cursor:pointer;border:none;border-radius:6px;padding:12px 18px;font-size:15px;font-weight:bold;background:#2e7d32;color:#fff;margin-top:16px;width:100%}
+  button:disabled{opacity:.6;cursor:default}
+  .status{font-size:13px;margin-top:10px;text-align:center}
+  .status.ok{color:#2e7d32;font-weight:bold}
+  .status.err{color:#c62828}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>🏅 Olimpíada da Ala Piçarreira</h1>
+  <div class="sub">Preencha sua inscrição abaixo.</div>
+
+  <div class="card">
+    <label>Organização</label>
+    <select id="orgSelect"></select>
+
+    <label>Nome do participante</label>
+    <input type="text" id="nomeInput" placeholder="Digite o nome completo">
+
+    <label>Modalidades</label>
+    <div class="games" id="gamesBox"></div>
+
+    <button id="saveBtn" onclick="enviarInscricao()">✅ Enviar Inscrição</button>
+    <div class="status" id="saveStatus"></div>
+  </div>
+</div>
+
+<script>
+// ⚠️ IMPORTANTE: troque pela URL do seu Apps Script (Implantar > Nova implantação > App da Web)
+// Formato: https://script.google.com/macros/s/XXXXXXXXXXXXXXXX/exec
+const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbydcAVn2Sd8AEOGwKkxiZ2LjFLkMnIS8KvK9iVWKbWEzKFDKFO_YAaiifY_LKG0Le2ChA/exec";
+
+const games = {
+  "Sociedade de Socorro": ["Vôlei","Queimada","Ping Pong","Badminton","Corrida de Saco","Corrida com Ovo","Tiro ao Alvo","Cabo de Guerra","Kahoot"],
+  "Moças": ["Futebol","Vôlei","Queimada","Ping Pong","Badminton","Corrida de Saco","Corrida com Ovo","Tiro ao Alvo","Cabo de Guerra","Kahoot"],
+  "Rapazes": ["Futebol","Vôlei","Queimada","Ping Pong","Badminton","Corrida de Saco","Corrida com Ovo","Tiro ao Alvo","Cabo de Guerra","Kahoot"],
+  "Quórum de Élderes": ["Futebol","Vôlei","Queimada","Ping Pong","Badminton","Corrida de Saco","Tiro ao Alvo","Cabo de Guerra","Kahoot"],
+  "Primária": ["Corrida de Saco","Corrida com Ovo","Pique-Bandeira","Cabo de Guerra","Boliche","Pescaria","Kahoot"]
+};
+
+const orgSelect = document.getElementById('orgSelect');
+Object.keys(games).forEach(org=>{
+  const opt = document.createElement('option');
+  opt.value = org;
+  opt.textContent = org;
+  orgSelect.appendChild(opt);
+});
+
+function buildGamesBox(){
+  const org = orgSelect.value;
+  const box = document.getElementById('gamesBox');
+  box.innerHTML = '';
+  games[org].forEach((g,i)=>{
+    const div = document.createElement('div');
+    div.className = 'game-item';
+    div.innerHTML = '<input type="checkbox" id="game_'+i+'" value="'+g+'"><label for="game_'+i+'" style="margin:0;font-weight:normal">'+g+'</label>';
+    box.appendChild(div);
+  });
+}
+
+orgSelect.addEventListener('change', buildGamesBox);
+buildGamesBox();
+
+async function enviarInscricao(){
+  const org = orgSelect.value;
+  const nome = document.getElementById('nomeInput').value.trim();
+  const statusEl = document.getElementById('saveStatus');
+  const btn = document.getElementById('saveBtn');
+
+  if(!nome){
+    statusEl.textContent = '⚠️ Digite o nome do participante.';
+    statusEl.className = 'status err';
+    return;
+  }
+
+  const checked = Array.from(document.querySelectorAll('#gamesBox input[type=checkbox]:checked')).map(c=>c.value);
+  if(checked.length===0){
+    statusEl.textContent = '⚠️ Selecione ao menos uma modalidade.';
+    statusEl.className = 'status err';
+    return;
+  }
+
+  if(APPS_SCRIPT_URL.includes('COLE_AQUI')){
+    statusEl.textContent = '⚠️ Configure a URL do Apps Script no código antes de usar.';
+    statusEl.className = 'status err';
+    return;
+  }
+
+  const body = new URLSearchParams();
+  body.append('Nome', nome);
+  body.append('Organizacao', org);
+  body.append('Modalidades', checked.join(', '));
+
+  btn.disabled = true;
+  statusEl.textContent = 'Enviando...';
+  statusEl.className = 'status';
+
+  try{
+    // Apps Script Web Apps não retornam cabeçalhos CORS legíveis pelo fetch,
+    // então usamos "no-cors": o envio funciona normalmente, só não conseguimos
+    // ler a resposta de volta (por isso não checamos response.ok aqui).
+    await fetch(APPS_SCRIPT_URL, {
+      method: 'POST',
+      mode: 'no-cors',
+      body: body
+    });
+
+    statusEl.textContent = '✅ Inscrição enviada com sucesso!';
+    statusEl.className = 'status ok';
+    document.getElementById('nomeInput').value = '';
+    document.querySelectorAll('#gamesBox input[type=checkbox]').forEach(c=>c.checked=false);
+  }catch(e){
+    statusEl.textContent = '❌ Erro ao enviar: ' + e.message;
+    statusEl.className = 'status err';
+  }finally{
+    btn.disabled = false;
+  }
+}
+</script>
+</body>
+</html>
